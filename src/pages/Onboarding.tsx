@@ -155,8 +155,16 @@ Return ONLY valid JSON: {"calories": 2200, "protein": 150, "carbs": 200, "fat": 
   if (!user) return null;
 
   return (
-    <div className="min-h-screen flex items-center justify-center bg-muted/30 px-4 py-12">
-      <div className="max-w-lg w-full bg-card p-8 rounded-3xl shadow-elevated">
+    <div
+      className="min-h-screen flex items-center justify-center px-4 py-12 relative"
+      style={{
+        backgroundImage: "url('/Gemini_Generated_Image_1jsqse1jsqse1jsq.png')",
+        backgroundSize: "cover",
+        backgroundPosition: "center",
+      }}
+    >
+      <div className="absolute inset-0 bg-black/50 backdrop-blur-sm" />
+      <div className="max-w-lg w-full bg-card/95 backdrop-blur-md p-8 rounded-3xl shadow-elevated relative z-10">
         {/* Header */}
         <div className="flex items-center gap-3 mb-2">
           <div className="w-9 h-9 rounded-lg gradient-primary flex items-center justify-center shrink-0">

@@ -12,7 +12,8 @@ import { doc, getDoc } from "firebase/firestore";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { Brain, Eye, EyeOff } from "lucide-react";
+import { Brain, Eye, EyeOff, ArrowLeft } from "lucide-react";
+import { Link } from "react-router-dom";
 import { toast } from "sonner";
 
 export default function Login() {
@@ -77,8 +78,26 @@ export default function Login() {
   };
 
   return (
-    <div className="min-h-screen flex items-center justify-center bg-muted/30 px-4 py-10">
-      <div className="max-w-md w-full bg-card p-8 rounded-3xl shadow-elevated">
+    <div
+      className="min-h-screen flex items-center justify-center px-4 py-10 relative"
+      style={{
+        backgroundImage: "url('/Gemini_Generated_Image_1jsqse1jsqse1jsq.png')",
+        backgroundSize: "cover",
+        backgroundPosition: "center",
+      }}
+    >
+      {/* Dark overlay */}
+      <div className="absolute inset-0 bg-black/50 backdrop-blur-sm" />
+
+      {/* Back to home */}
+      <Link
+        to="/"
+        className="absolute top-5 left-5 z-10 flex items-center gap-1.5 text-white/80 hover:text-white text-sm font-medium transition-colors"
+      >
+        <ArrowLeft className="h-4 w-4" /> Back to Home
+      </Link>
+
+      <div className="max-w-md w-full bg-card/95 backdrop-blur-md p-8 rounded-3xl shadow-elevated relative z-10">
         {/* Logo */}
         <div className="flex flex-col items-center mb-6">
           <div className="w-16 h-16 rounded-2xl gradient-primary flex items-center justify-center mb-4 shadow-card">
