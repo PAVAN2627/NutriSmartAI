@@ -1,0 +1,27 @@
+rules_version = '2';
+
+service cloud.firestore {
+  match /databases/{database}/documents {
+    // Helper function to check if user is authenticated
+    function isAuthenticated() {
+      return request.auth != null;
+    }
+
+    // Helper function to check if the user is accessing their own data
+    function isOwner(userId) {
+      return isAuthenticated() && request.auth.uid == userId;
+    }
+
+    // User profiles securely managed
+    match /users/{userId} {
+      allow read: if isAuthenticated(); // Users can read other users for buddy matching
+      allow create, update: if isOwner(userId);
+      allow delete: if false; // Prevent accidental user deletion from client
+    }
+    
+    // Diet plans, habits, scans belong to specific users
+    match /users/{userId}/{document=**} {
+       allow read, write: if isOwner(userId);
+    }
+  }
+}
