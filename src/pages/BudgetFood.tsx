@@ -5,7 +5,7 @@ import { Input } from "@/components/ui/input";
 import { Wallet, RefreshCw, Sparkles } from "lucide-react";
 import { useState, useEffect } from "react";
 import { auth, db } from "@/lib/firebase";
-import { doc, getDoc } from "firebase/firestore";
+import { doc, getDoc, setDoc } from "firebase/firestore";
 import { onAuthStateChanged } from "firebase/auth";
 import { getGeminiTextModel } from "@/lib/gemini";
 import { toast } from "sonner";
@@ -15,6 +15,7 @@ type BudgetResult = { items: FoodItem[]; totalEstimate: string; tip: string };
 
 export default function BudgetFood() {
   const [profile, setProfile] = useState<any>(null);
+  const [uid, setUid] = useState<string | null>(null);
   const [budget, setBudget] = useState("200");
   const [result, setResult] = useState<BudgetResult | null>(null);
   const [loading, setLoading] = useState(false);
@@ -22,8 +23,14 @@ export default function BudgetFood() {
   useEffect(() => {
     const unsub = onAuthStateChanged(auth, async (user) => {
       if (!user) return;
+      setUid(user.uid);
       const snap = await getDoc(doc(db, "users", user.uid));
-      if (snap.exists()) setProfile(snap.data());
+      if (snap.exists()) {
+        const data = snap.data();
+        setProfile(data);
+        // Restore saved result if exists
+        if (data.budgetFood) setResult(data.budgetFood);
+      }
     });
     return () => unsub();
   }, []);
@@ -34,17 +41,27 @@ export default function BudgetFood() {
     setLoading(true);
     try {
       const model = getGeminiTextModel();
-      const prompt = `You are a budget nutrition expert. Suggest affordable daily food options for:
-- Diet: ${profile.diet}, Goal: ${profile.goal} weight
-- Daily calorie target: ${profile.targetCalories} kcal, Protein: ${profile.targetProtein}g
-- Daily budget: Rs.${budget} (Indian Rupees)
-Return ONLY valid JSON:
-{"items":[{"name":"food","price":"Rs.XX","calories":200,"protein":"10g","why":"reason","emoji":"🥚"},{"name":"food","price":"Rs.XX","calories":150,"protein":"8g","why":"reason","emoji":"🥛"},{"name":"food","price":"Rs.XX","calories":300,"protein":"15g","why":"reason","emoji":"🍛"},{"name":"food","price":"Rs.XX","calories":100,"protein":"5g","why":"reason","emoji":"🍌"},{"name":"food","price":"Rs.XX","calories":250,"protein":"12g","why":"reason","emoji":"🥜"}],"totalEstimate":"Rs.XXX for the full day","tip":"one money-saving nutrition tip"}`;
+      const prompt = [
+        "You are a budget nutrition expert for Indian users.",
+        "Suggest 5 affordable daily food items for this person:",
+        `Diet preference: ${profile.diet}`,
+        `Goal: ${profile.goal} weight`,
+        `Daily calorie target: ${profile.targetCalories} kcal`,
+        `Daily protein target: ${profile.targetProtein}g`,
+        `Daily budget: Rs.${budget}`,
+        "",
+        "Return ONLY a valid JSON object. No markdown. No explanation.",
+        "Format: an object with keys: items (array of 5 objects), totalEstimate (string), tip (string).",
+        "Each item has: name, price (e.g. Rs.30), calories (number), protein (e.g. 8g), why (one sentence), emoji.",
+      ].join("\n");
 
       const res = await model.generateContent(prompt);
       const text = res.response.text();
       const clean = text.replace(/```json/gi, "").replace(/```/g, "").trim();
-      setResult(JSON.parse(clean));
+      const parsed = JSON.parse(clean);
+      setResult(parsed);
+      // Save to Firestore
+      if (uid) await setDoc(doc(db, "users", uid), { budgetFood: parsed }, { merge: true });
       toast.success("Budget meal suggestions ready!");
     } catch (err) {
       console.error(err);

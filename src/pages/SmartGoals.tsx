@@ -3,12 +3,13 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Progress } from "@/components/ui/progress";
-import { Sliders, Plus, Trash2, CheckCircle2, Target, Droplets, Footprints, Dumbbell, Flame, Minus } from "lucide-react";
+import { Sliders, Plus, Trash2, CheckCircle2, Target, Droplets, Footprints, Dumbbell, Flame, Minus, Circle, Sparkles } from "lucide-react";
 import { useState, useEffect } from "react";
 import { auth, db } from "@/lib/firebase";
 import { doc, getDoc, setDoc } from "firebase/firestore";
 import { onAuthStateChanged } from "firebase/auth";
 import { toast } from "sonner";
+import { Link } from "react-router-dom";
 
 type GoalCategory = "weight" | "water" | "steps" | "workout" | "calories";
 
@@ -42,6 +43,7 @@ export default function SmartGoals() {
   const [adding, setAdding] = useState(false);
   const [newCategory, setNewCategory] = useState<GoalCategory>("water");
   const [newTarget, setNewTarget] = useState("");
+  const [habitChallenge, setHabitChallenge] = useState<{ challengeTitle: string; days: { day: string; task: string; done: boolean }[] } | null>(null);
 
   useEffect(() => {
     const unsub = onAuthStateChanged(auth, async (user) => {
@@ -54,7 +56,6 @@ export default function SmartGoals() {
         if (data.goals && data.goals.length > 0) {
           setGoals(data.goals);
         } else {
-          // Auto-seed goals from AI profile
           const seeded: UserGoal[] = [
             { id: "calories", category: "calories", label: "Daily Calorie Target", target: data.targetCalories || 2000, current: 0, unit: "kcal" },
             { id: "water", category: "water", label: "Daily Water Intake", target: 8, current: 0, unit: "glasses" },
@@ -62,8 +63,11 @@ export default function SmartGoals() {
             { id: "workout", category: "workout", label: "Workout Days This Week", target: data.activity === "gym" || data.activity === "athlete" ? 5 : 3, current: 0, unit: "days" },
           ];
           setGoals(seeded);
-          // persist immediately
           await setDoc(doc(db, "users", user.uid), { goals: seeded }, { merge: true });
+        }
+        // Load habit challenge if exists
+        if (data.habitCoach?.days) {
+          setHabitChallenge({ challengeTitle: data.habitCoach.challengeTitle, days: data.habitCoach.days });
         }
       }
     });
@@ -138,6 +142,59 @@ export default function SmartGoals() {
             <span className="font-heading font-bold text-primary">{totalCompleted} / {goals.length} goals hit</span>
           </CardContent>
         </Card>
+
+        {/* 7-Day Habit Challenge from AI Coach */}
+        {habitChallenge && (
+          <Card className="shadow-card border-nutri-blue/20">
+            <CardHeader>
+              <div className="flex items-center justify-between">
+                <CardTitle className="font-heading text-base text-nutri-blue flex items-center gap-2">
+                  <Sparkles className="h-4 w-4" />
+                  {habitChallenge.challengeTitle}
+                </CardTitle>
+                <span className="text-xs text-muted-foreground">
+                  {habitChallenge.days.filter(d => d.done).length}/7 done
+                </span>
+              </div>
+              <div className="w-full bg-muted rounded-full h-1.5 mt-2">
+                <div
+                  className="bg-nutri-blue h-1.5 rounded-full transition-all"
+                  style={{ width: `${(habitChallenge.days.filter(d => d.done).length / 7) * 100}%` }}
+                />
+              </div>
+            </CardHeader>
+            <CardContent className="space-y-2">
+              {habitChallenge.days.map((d, i) => (
+                <div key={i} className={`flex items-start gap-3 rounded-xl p-2.5 ${d.done ? "bg-primary/10" : "bg-muted/40"}`}>
+                  {d.done
+                    ? <CheckCircle2 className="h-4 w-4 text-primary shrink-0 mt-0.5" />
+                    : <Circle className="h-4 w-4 text-muted-foreground shrink-0 mt-0.5" />}
+                  <div>
+                    <p className="text-xs font-semibold text-muted-foreground">{d.day}</p>
+                    <p className={`text-xs mt-0.5 ${d.done ? "line-through text-muted-foreground" : ""}`}>{d.task}</p>
+                  </div>
+                </div>
+              ))}
+              <p className="text-xs text-muted-foreground pt-1">
+                Mark tasks in{" "}
+                <Link to="/habit-coach" className="text-primary underline">AI Habit Coach</Link>
+              </p>
+            </CardContent>
+          </Card>
+        )}
+
+        {!habitChallenge && (
+          <Card className="shadow-card border-dashed border-nutri-blue/30">
+            <CardContent className="p-4 flex items-center gap-3">
+              <Sparkles className="h-5 w-5 text-nutri-blue shrink-0" />
+              <p className="text-sm text-muted-foreground">
+                No 7-day challenge yet.{" "}
+                <Link to="/habit-coach" className="text-primary font-medium underline">Go to AI Habit Coach</Link>
+                {" "}to generate one.
+              </p>
+            </CardContent>
+          </Card>
+        )}
 
         {/* Add goal form */}
         {adding && (
